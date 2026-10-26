@@ -130,7 +130,7 @@ if $env.IDENTIFY_UNSUPPORTED_PACKAGES != '0' {
     git switch -d $merge
 
     nix config show --json | save -rf ../nix-config.json
-    nix derivation show --recursive -f. ...$result.failed.name | save -rf ../drv-graph.json
+    nix derivation show --impure --recursive -f. ...$result.failed.name | save -rf ../drv-graph.json
     let buildSupport = nix-instantiate ...[
       --eval --strict --json ("../drv-build-support.nix" | path expand)
       --argstr configPath ("../nix-config.json" | path expand)
@@ -138,7 +138,7 @@ if $env.IDENTIFY_UNSUPPORTED_PACKAGES != '0' {
     ] | from json
 
     $result.failed
-    | insert drv { nix eval -f. $"($in.name).drvPath" --raw | path basename }
+    | insert drv { nix eval --impure -f. $"($in.name).drvPath" --raw | path basename }
     | where {|pkg| $buildSupport | get $pkg.drv | not $in.supported }
     | select name aliases
     | let unsupported
@@ -161,12 +161,12 @@ if $env.IDENTIFY_STILL_FAILING_PACKAGES == '1' {
     git switch -d $base
 
     $result.failed
-    | insert path { try { nix eval -f. $"($in.name).outPath" --raw } }
+    | insert path { try { nix eval --impure -f. $"($in.name).outPath" --raw } }
     | where path != null
     | let candidates
 
     if ($candidates | is-not-empty) {
-      try { nix build --keep-going -L ...([$jobsArg] | compact -e) -f. ...$candidates.name }
+      try { nix build --impure --keep-going -L ...([$jobsArg] | compact -e) -f. ...$candidates.name }
     }
 
     $candidates
